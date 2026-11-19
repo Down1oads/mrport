@@ -23,32 +23,77 @@ function configurePortPackage(config, report, loadingFiles) {
     if (init && init.method === "HEAD") return new Response(null, {status:200, headers});
     if (!window.DecompressionStream) throw new Error("Please use a current browser with gzip decompression support.");
     let part = 0, reader = null, loaded = 0;
+    const pending = new Map();
     const abort = new AbortController();
-    if (init && init.signal) init.signal.addEventListener("abort", () => abort.abort(), {once:true});
-    report(key, {loaded:0, total:spec.compressedBytes, lengthComputable:true});
+    const onAbort = () => abort.abort(init.signal.reason);
+    if (init && init.signal) {
+      if (init.signal.aborted) onAbort();
+      else init.signal.addEventListener("abort", onAbort, {once:true});
+    }
+    function progress(finished) {
+      report(key, {loaded, total:spec.compressedBytes, lengthComputable:true,
+        phase:loaded === spec.compressedBytes ? "Unpacking" : "Downloading", finished:!!finished});
+    }
+    function cleanup() {
+      if (init && init.signal) init.signal.removeEventListener("abort", onAbort);
+    }
+    function prefetch(index) {
+      if (index >= spec.parts.length || pending.has(index)) return;
+      const info = spec.parts[index];
+      let received = 0;
+      // Only the current part and one ahead are downloaded. The ahead buffer
+      // is bounded to one 48 MiB part, rather than retaining the whole game.
+      const buffer = new TransformStream({
+        transform(chunk, controller) {
+          received += chunk.byteLength;
+          if (received > info.bytes) throw new Error("Oversized download: " + info.path);
+          loaded += chunk.byteLength; progress(false); controller.enqueue(chunk);
+        },
+        flush() {
+          if (received !== info.bytes) throw new Error("Incomplete download: " + info.path);
+        }
+      }, undefined, {highWaterMark:Math.min(info.bytes, 48 * 1024 * 1024), size:chunk => chunk.byteLength});
+      pending.set(index, buffer.readable);
+      // Catch failures even when the consumer has not reached this part yet.
+      (async () => {
+        try {
+          const response = await nativeFetch(new URL(info.path, document.baseURI), {signal:abort.signal});
+          if (!response.ok || !response.body) throw new Error("Could not load " + info.path + " (HTTP " + response.status + ")");
+          await response.body.pipeTo(buffer.writable, {signal:abort.signal});
+        } catch (error) {
+          abort.abort(error);
+          await buffer.writable.abort(error).catch(() => {});
+        }
+      })();
+    }
+    progress(false);
     const compressed = new ReadableStream({
+      start() { prefetch(0); prefetch(1); },
       async pull(controller) {
         try {
           for (;;) {
             if (!reader) {
               if (part === spec.parts.length) {
-                report(key, {loaded, total:spec.compressedBytes, lengthComputable:true, finished:true});
+                progress(true); cleanup();
                 controller.close(); return;
               }
-              const url = new URL(spec.parts[part].path, document.baseURI);
-              const response = await nativeFetch(url, {signal:abort.signal});
-              if (!response.ok) throw new Error("Could not load " + spec.parts[part].path + " (HTTP " + response.status + ")");
-              reader = response.body.getReader();
+              reader = pending.get(part).getReader();
             }
             const chunk = await reader.read();
-            if (chunk.done) {reader.releaseLock(); reader = null; part++; continue;}
-            loaded += chunk.value.byteLength;
-            report(key, {loaded, total:spec.compressedBytes, lengthComputable:true});
+            if (chunk.done) {
+              reader.releaseLock(); reader = null; pending.delete(part); part++;
+              prefetch(part + 1); continue;
+            }
             controller.enqueue(chunk.value); return;
           }
-        } catch (error) {abort.abort(); controller.error(error);}
+        } catch (error) {abort.abort(error); pending.clear(); cleanup(); controller.error(error);}
       },
-      cancel(reason) {abort.abort(); if (reader) return reader.cancel(reason);}
+      cancel(reason) {
+        abort.abort(reason); cleanup();
+        for (const stream of pending.values()) if (!stream.locked) stream.cancel(reason).catch(() => {});
+        pending.clear();
+        if (reader) return reader.cancel(reason);
+      }
     });
     return new Response(compressed.pipeThrough(new DecompressionStream("gzip")), {status:200, headers});
   };

@@ -36,7 +36,7 @@
       </div>
       <div id="unity-warning"> </div>
     </div>
-    <script src="package-loader.js?v=81c704914178"></script>
+    <script src="package-loader.js?v=4f3086c7913c"></script>
     <script>
       var canvas = document.querySelector("#unity-canvas");
       var gameReady = false;
@@ -95,13 +95,14 @@
         var total=files.reduce(function(sum,file){return sum+file.total;},0);
         var active=files.filter(function(file){return !file.finished && file.started;});
         var allDone=files.every(function(file){return file.finished;});
-        document.querySelector("#loading-stage").textContent=allDone ? "Starting game…" : active.length ? "Loading "+active.map(function(file){return file.label.split(" (")[0].toLowerCase();}).join(" + ")+"…" : "Loading launcher…";
+        var downloading=active.filter(function(file){return file.loaded<file.total;});
+        document.querySelector("#loading-stage").textContent=allDone ? "Starting game…" : downloading.length ? "Downloading "+downloading.map(function(file){return file.label.split(" (")[0].toLowerCase();}).join(" + ")+"…" : active.length ? "Unpacking game files…" : "Loading launcher…";
         document.querySelector("#loading-bytes").textContent=mb(loaded)+" / "+mb(total)+" MB";
         document.querySelector("#unity-progress-bar-full").style.width=(total ? loaded/total*100 : 0)+"%";
         document.querySelector("#loading-files").replaceChildren();
         ["dataUrl","codeUrl","frameworkUrl"].forEach(function(key){
           var file=loadingFiles[key];var row=document.createElement("div");row.className="loading-file";
-          var label=document.createElement("span");label.textContent=file.label;
+          var label=document.createElement("span");label.textContent=file.label+(file.started && !file.finished && file.loaded>=file.total ? " — unpacking" : "");
           var amount=document.createElement("span");amount.textContent=mb(file.loaded)+" / "+mb(file.total)+" MB";
           row.append(label,amount);document.querySelector("#loading-files").append(row);
         });
@@ -118,13 +119,13 @@
       renderLoading();
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/web.loader.js?v=81c704914178";
+      var loaderUrl = buildUrl + "/web.loader.js?v=4f3086c7913c";
       var config = {
         arguments: [],
         autoSyncPersistentDataPath: true,
-        dataUrl: buildUrl + "/web.data?v=81c704914178",
-        frameworkUrl: buildUrl + "/web.framework.js?v=81c704914178",
-        codeUrl: buildUrl + "/web.wasm?v=81c704914178",
+        dataUrl: buildUrl + "/web.data?v=4f3086c7913c",
+        frameworkUrl: buildUrl + "/web.framework.js?v=4f3086c7913c",
+        codeUrl: buildUrl + "/web.wasm?v=4f3086c7913c",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "Mr. President",
         productName: "Mr. President!",
