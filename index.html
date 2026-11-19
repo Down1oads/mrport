@@ -36,7 +36,7 @@
       </div>
       <div id="unity-warning"> </div>
     </div>
-    <script src="package-loader.js?v=afd6f81c76f3"></script>
+    <script src="package-loader.js?v=e9433b8bf392"></script>
     <script>
       var canvas = document.querySelector("#unity-canvas");
       var gameReady = false;
@@ -87,7 +87,7 @@
       }
 
 
-      var loadingFiles = {"loaderUrl":{"label":"Launcher","total":26021,"loaded":0,"finished":false},"dataUrl":{"label":"Game data (maps, textures & audio)","total":942587671,"loaded":0,"finished":false},"codeUrl":{"label":"Game engine","total":106436222,"loaded":0,"finished":false},"frameworkUrl":{"label":"Runtime","total":554155,"loaded":0,"finished":false}};
+      var loadingFiles = {"loaderUrl":{"label":"Launcher","total":26021,"loaded":0,"finished":false},"dataUrl":{"label":"Game data (maps, textures & audio)","total":943626191,"loaded":0,"finished":false},"codeUrl":{"label":"Game engine","total":106466123,"loaded":0,"finished":false},"frameworkUrl":{"label":"Runtime","total":554155,"loaded":0,"finished":false}};
       function mb(value) { return (value / 1000000).toLocaleString("en-US", {minimumFractionDigits:1, maximumFractionDigits:1}); }
       function renderLoading() {
         var files=Object.values(loadingFiles);
@@ -118,13 +118,13 @@
       renderLoading();
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/web.loader.js?v=afd6f81c76f3";
+      var loaderUrl = buildUrl + "/web.loader.js?v=e9433b8bf392";
       var config = {
         arguments: [],
         autoSyncPersistentDataPath: true,
-        dataUrl: buildUrl + "/web.data?v=afd6f81c76f3",
-        frameworkUrl: buildUrl + "/web.framework.js?v=afd6f81c76f3",
-        codeUrl: buildUrl + "/web.wasm?v=afd6f81c76f3",
+        dataUrl: buildUrl + "/web.data?v=e9433b8bf392",
+        frameworkUrl: buildUrl + "/web.framework.js?v=e9433b8bf392",
+        codeUrl: buildUrl + "/web.wasm?v=e9433b8bf392",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "Mr. President",
         productName: "Mr. President!",
